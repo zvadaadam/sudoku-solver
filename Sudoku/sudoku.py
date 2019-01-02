@@ -2,11 +2,19 @@ import numpy as np
 
 from Sudoku.solver import BacktrackingSolverStrategy
 from Sudoku.solver import BackjumpingSolverStrategy
+from Sudoku.solver import SolverStrategy
 
 
 class Sudoku(object):
 
-    def __init__(self, grid, strategy=None):
+    def __init__(self, grid, strategy):
+
+        if not isinstance(grid, np.ndarray):
+            raise Exception(f'Grid must be type of {np.ndarray}')
+
+        if not issubclass(type(strategy), SolverStrategy):
+            raise Exception(f'Strategy must be subclass of {SolverStrategy}')
+
         self.grid = grid
         self.strategy = strategy
 
@@ -130,34 +138,6 @@ class Sudoku(object):
                not self.used_in_axis(arr, axis=1, axis_index=column, num=num) and \
                not self.used_in_box(arr, row - row % 3, column - column % 3, num)
 
-    def backtracking(self, grid, variables, num_steps=0):
-
-        if len(variables) == 0:
-            if not self.is_solved(grid):
-                raise Exception('Should not happen.')
-            return True, grid, num_steps+1
-
-        # next unassigned value
-        next_row, next_column = variables[0]
-        new_variables = variables[1:]
-
-        for i in range(1, 10):
-
-            num_steps += 1
-
-            if self.is_valid_location(grid, next_row, next_column, i):
-
-                grid[next_row, next_column] = i
-
-                status, new_grid, steps = self.backtracking(grid.copy(), new_variables, num_steps)
-                if status:
-                    return True, new_grid, steps
-
-                num_steps = steps
-
-                grid[next_row, next_column] = 0
-
-        return False, grid, num_steps
 
     def find_conflicts(self, grid, row, column, num):
 
@@ -182,49 +162,6 @@ class Sudoku(object):
 
         return conflicts
 
-    def backjumping(self, grid, variables, num_steps=0):
-
-        if len(variables) == 0:
-            if not self.is_solved(grid):
-                raise Exception('Should not happen.')
-            return True, grid, num_steps + 1, set()
-
-            # next unassigned value
-        next_row, next_column = variables[0]
-        new_variables = variables[1:]
-
-        conflicts = set()
-
-        for i in range(1, 10):
-
-            num_steps += 1
-
-            status = False
-            new_grid = []
-            steps = 0
-            new_conflicts = set()
-            if self.is_valid_location(grid, next_row, next_column, i):
-
-                grid[next_row, next_column] = i
-
-                status, new_grid, steps, new_conflicts = self.backjumping(grid.copy(), new_variables, num_steps)
-            else:
-                new_conflicts = self.find_conflicts(grid, next_row, next_column, i) # find all conflicts for i in (next_row, next_column)
-
-
-            if status:
-                return True, new_grid, steps, set()
-            elif (next_row + 8*next_column) not in new_conflicts:
-                return False, grid, num_steps, new_conflicts
-            else:
-                new_conflicts.remove(next_row + 8*next_column)
-                conflicts = conflicts.union(new_conflicts)
-
-            num_steps = steps
-            grid[next_row, next_column] = 0
-
-
-        return False, grid, num_steps, conflicts
 
 
 
@@ -256,8 +193,6 @@ if __name__ == '__main__':
     # ]
 
     grid = np.array(grid)
-    sudoku = Sudoku(grid)
-    print(sudoku.solve())
 
     sudoku = Sudoku(grid, strategy=BacktrackingSolverStrategy())
     print(sudoku.solve_strategy())
